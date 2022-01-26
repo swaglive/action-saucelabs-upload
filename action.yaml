@@ -1,0 +1,60 @@
+name: Upload File to Saucelabs App Storage
+description: >
+  Uploads an app file to Sauce Storage for the purpose of mobile app testing and returns a unique file ID assigned to the app.
+  Sauce Storage supports app files in *.apk, *.aab, *.ipa, or *.zip format, up to 4GB.
+brand:
+  icon: upload-cloud
+  color: red
+inputs:
+  payload:
+    description: File path to upload
+    required: true
+  name:
+    description: Filename to upload the file as
+    required: false
+  description:
+    description: File description
+    required: false
+  username:
+    description: Saucelabs Username
+    required: true
+  access_key:
+    description: Saucelabs Access Key
+    required: true
+  datacenter:
+    description: Saucelab datacenter
+    required: true
+outputs:
+  id:
+    description: File ID
+    value: ${{ steps.upload.outputs.id }}
+  name:
+    description: File name
+    value: ${{ steps.upload.outputs.name }}
+  json:
+    description: Raw JSON
+    value: ${{ steps.upload.outputs.json }}
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    id: upload
+    run: |
+      name='${{ inputs.name }}'
+      description='${{ inputs.description }}'
+      payload='${{ inputs.payload }}'
+
+      opts=()
+      [[ $name =~ .+ ]] && opts+=(-F "'name=$name'")
+      [[ $description =~ .+ ]] && opts+=(-F "'description=$description'")
+
+      upload=$(
+        curl -v -X POST https://api.us-west-1.saucelabs.com/v1/storage/upload \
+          -u '${{ inputs.username }}:${{ inputs.access_key }}' \
+          -F "'payload=@$payload'" \
+          ${opts[@]}
+      )
+
+      echo "::set-output name=id::$(jq -rc '.item.id' <<< $upload)"
+      echo "::set-output name=name::$(jq -rc '.item.name' <<< $upload)"
+      echo "::set-output name=json::$upload"
