@@ -42,19 +42,24 @@ runs:
     run: |
       name='${{ inputs.name }}'
       description='${{ inputs.description }}'
-      payload='${{ inputs.payload }}'
 
       opts=()
       [[ $name =~ .+ ]] && opts+=(-F "'name=$name'")
       [[ $description =~ .+ ]] && opts+=(-F "'description=$description'")
 
       upload=$(
-        curl -v -X POST https://api.us-west-1.saucelabs.com/v1/storage/upload \
+        curl -X POST https://api.${{ inputs.datacenter }}.saucelabs.com/v1/storage/upload \
           -u '${{ inputs.username }}:${{ inputs.access_key }}' \
-          -F "'payload=@$payload'" \
+          -F 'payload=@${{ inputs.payload }}' \
           ${opts[@]}
       )
 
       echo "::set-output name=id::$(jq -rc '.item.id' <<< $upload)"
       echo "::set-output name=name::$(jq -rc '.item.name' <<< $upload)"
       echo "::set-output name=json::$upload"
+
+  - shell: bash
+    run: |
+      echo "::group::Outputs"
+      jq <<< '${{ toJSON(steps.upload.outputs) }}'
+      echo "::endgroup::"
